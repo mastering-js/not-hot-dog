@@ -9,9 +9,9 @@
           Select a file from your computer and click "Run"
         </div>
         <input type="file" id="select">
-        <button type="submit" onclick="classify()">Run</button>
+        <button type="submit" id="classify" onclick="classify()">Run</button>
       </div>
-      <img id="user-selected" src="./data/hot-dog/4.jpg" style="width: 100px; height: 100px;">
+      <img id="user-selected" style="margin-top: 0.5em; margin-bottom: 0.25em; width: 100px; height: 100px;">
       <div id="show-hot-dog" style="font-size: 1.2em; display: none">
         <span style="color: green">&check;</span> Hot Dog
       </div>
@@ -40,6 +40,8 @@
   </body>
   <script src="//unpkg.com/brain.js"></script>
   <script type="module">
+    document.querySelector('#classify').disabled = true;
+
     import {
       ImageEmbedder,
       FilesetResolver
@@ -76,21 +78,9 @@
     console.log('Training data', trainingData);
     const net = new brain.NeuralNetwork();
     net.fromJSON(neuralnet);
-    /*let minError = 0.5;
-    net.trainAsync(trainingData, {
-      iterations,
-      callback: function(res) {
-        minError = Math.min(minError, res.error);
-        console.log('Training', res.iterations, '/', iterations, minError);
-      }
-    }).then(
-      (res) => {
-        console.log('Trained!', res);
-        console.log(JSON.stringify(net.toJSON(), null, '  '));
-      },
-      err => console.log(err));*/
 
     window.classify = classify;
+    document.querySelector('#classify').disabled = false;
     async function classify() {
       document.querySelector('#show-hot-dog').style.display = 'none';
       document.querySelector('#show-not-hot-dog').style.display = 'none';
@@ -118,6 +108,20 @@
         document.querySelector('#show-hot-dog').style.display = 'block';
       }
       console.log(res);
+    }
+
+    async function train() {
+      let minError = 0.5;
+      const res = await net.trainAsync(trainingData, {
+        iterations,
+        callback: function(res) {
+          minError = Math.min(minError, res.error);
+          console.log('Training', res.iterations, '/', iterations, minError);
+        }
+      });
+
+      console.log('Trained!', res);
+      console.log(JSON.stringify(net.toJSON(), null, '  '));
     }
   </script>
 </html>
