@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@mediapipe/tasks-vision": "^0.10.2",
+    "serve": "^14.2.0"
+  }
+}

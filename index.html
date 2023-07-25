@@ -1,0 +1,123 @@
+<html>
+  <body>
+    <h1>
+      Hot Dog Classifier
+    </h1>
+    <div>
+      <div>
+        <div>
+          Select a file from your computer and click "Run"
+        </div>
+        <input type="file" id="select">
+        <button type="submit" onclick="classify()">Run</button>
+      </div>
+      <img id="user-selected" src="./data/hot-dog/4.jpg" style="width: 100px; height: 100px;">
+      <div id="show-hot-dog" style="font-size: 1.2em; display: none">
+        <span style="color: green">&check;</span> Hot Dog
+      </div>
+      <div id="show-not-hot-dog" style="font-size: 1.2em; display: none">
+        <span style="color: red">&times;</span> Not Hot Dog
+      </div>
+    </div>
+
+    <h1>Training Data</h1>
+    <h2>Hot Dog:</h2>
+    <div id="hot-dog">
+      <img src="./data/hot-dog/1.jpg" style="height: 50px; width: 50px;">
+      <img src="./data/hot-dog/2.jpg" style="height: 50px; width: 50px;">
+      <img src="./data/hot-dog/3.jpg" style="height: 50px; width: 50px;">
+      <img src="./data/hot-dog/4.jpg" style="height: 50px; width: 50px;">
+      <img src="./data/hot-dog/5.jpg" style="height: 50px; width: 50px;">
+    </div>
+    <h2>Not Hot Dog:</h2>
+    <div id="not-hot-dog">
+      <img src="./data/not-hot-dog/1.jpg" style="height: 50px; width: 50px;">
+      <img src="./data/not-hot-dog/2.jpg" style="height: 50px; width: 50px;">
+      <img src="./data/not-hot-dog/3.jpg" style="height: 50px; width: 50px;">
+      <img src="./data/not-hot-dog/4.jpg" style="height: 50px; width: 50px;">
+      <img src="./data/not-hot-dog/5.jpg" style="height: 50px; width: 50px;">
+    </div>
+  </body>
+  <script src="//unpkg.com/brain.js"></script>
+  <script type="module">
+    import {
+      ImageEmbedder,
+      FilesetResolver
+    } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0";
+
+    const vision = await FilesetResolver.forVisionTasks(
+      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm"
+    );
+    const imageEmbedder = await ImageEmbedder.createFromModelPath(vision,
+      "https://storage.googleapis.com/mediapipe-models/image_embedder/mobilenet_v3_small/float32/1/mobilenet_v3_small.tflite"
+    );
+
+    const neuralnet = await fetch('./neuralnet.json').then(res => res.json());
+
+    const iterations = 2000;
+    const trainingData = [];
+
+    const hotDogImages = document.querySelectorAll('#hot-dog img');
+    for (const image of hotDogImages) {
+      console.log('Image', image);
+      const embedding = imageEmbedder.embed(image).embeddings[0].floatEmbedding;
+      console.log('Embeddings', embedding);
+      trainingData.push({ input: embedding, output: [1] });
+    }
+
+    const notHotDogImages = document.querySelectorAll('#not-hot-dog img');
+    for (const image of notHotDogImages) {
+      console.log('Image', image);
+      const embedding = imageEmbedder.embed(image).embeddings[0].floatEmbedding;
+      console.log('Embeddings', embedding);
+      trainingData.push({ input: embedding, output: [0] });
+    }
+
+    console.log('Training data', trainingData);
+    const net = new brain.NeuralNetwork();
+    net.fromJSON(neuralnet);
+    /*let minError = 0.5;
+    net.trainAsync(trainingData, {
+      iterations,
+      callback: function(res) {
+        minError = Math.min(minError, res.error);
+        console.log('Training', res.iterations, '/', iterations, minError);
+      }
+    }).then(
+      (res) => {
+        console.log('Trained!', res);
+        console.log(JSON.stringify(net.toJSON(), null, '  '));
+      },
+      err => console.log(err));*/
+
+    window.classify = classify;
+    async function classify() {
+      document.querySelector('#show-hot-dog').style.display = 'none';
+      document.querySelector('#show-not-hot-dog').style.display = 'none';
+
+      const input = document.querySelector('#select');
+      const url = URL.createObjectURL(input.files[0]);
+
+      const loadPromise = new Promise(resolve => {
+        document.querySelector('#user-selected').onload = function() {
+          resolve();
+        };
+      });
+      document.querySelector('#user-selected').src = url;
+      await loadPromise;
+
+      const embedding = imageEmbedder.embed(
+        document.querySelector('#user-selected')
+      ).embeddings[0].floatEmbedding;
+      console.log('Embeddings', embedding);
+      
+      const res = net.run(embedding);
+      if (res[0] < 0.5) {
+        document.querySelector('#show-not-hot-dog').style.display = 'block';
+      } else {
+        document.querySelector('#show-hot-dog').style.display = 'block';
+      }
+      console.log(res);
+    }
+  </script>
+</html>
